@@ -44,7 +44,10 @@ import org.sonar.plugins.java.api.tree.Tree;
 import org.sonar.plugins.java.api.tree.Tree.Kind;
 import org.sonar.plugins.java.api.tree.VariableTree;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Rule(
   key = "S1068",
@@ -52,8 +55,6 @@ import java.util.List;
   tags={"unused"})
 @BelongsToProfile(title = "Sonar way", priority = Priority.MAJOR)
 public class UnusedPrivateFieldCheck extends SubscriptionBaseVisitor {
-
-  private static final String LOMBOK_GETTER = "lombok.Getter";
 
   private static final Tree.Kind[] ASSIGNMENT_KINDS = {
     Tree.Kind.ASSIGNMENT,
@@ -68,6 +69,22 @@ public class UnusedPrivateFieldCheck extends SubscriptionBaseVisitor {
     Tree.Kind.AND_ASSIGNMENT,
     Tree.Kind.XOR_ASSIGNMENT,
     Tree.Kind.OR_ASSIGNMENT};
+  private static final Set<String> USED_FIELDS_ANNOTATIONS = new HashSet<String>(Arrays.asList(
+    "lombok.Getter",
+    "lombok.Setter",
+    "javax.enterprise.inject.Produces"));
+
+  private static final Set<String> USED_TYPES_ANNOTATIONS = new HashSet<String>(Arrays.asList(
+    "lombok.Getter",
+    "lombok.Setter",
+    "lombok.Data",
+    "lombok.Value",
+    "lombok.Builder",
+    "lombok.ToString",
+    "lombok.EqualsAndHashCode",
+    "lombok.AllArgsConstructor",
+    "lombok.NoArgsConstructor",
+    "lombok.RequiredArgsConstructor"));
 
   private List<ClassTree> classes = Lists.newArrayList();
   private ListMultimap<Symbol, IdentifierTree> assignments = ArrayListMultimap.create();
@@ -111,7 +128,7 @@ public class UnusedPrivateFieldCheck extends SubscriptionBaseVisitor {
   }
 
   private void checkClassFields(ClassTree classTree) {
-    if (!hasAnnotation(classTree.modifiers(), LOMBOK_GETTER)) {
+    if (!hasAnnotation(classTree.modifiers(), USED_TYPES_ANNOTATIONS)) {
       for (Tree member : classTree.members()) {
         if (member.is(Tree.Kind.VARIABLE)) {
           checkIfUnused((VariableTree) member);
@@ -132,13 +149,14 @@ public class UnusedPrivateFieldCheck extends SubscriptionBaseVisitor {
 
   private boolean hasExcludedAnnotation(VariableTree tree) {
     ModifiersTree modifiers = tree.modifiers();
-    return hasAnnotation(modifiers, LOMBOK_GETTER) || hasAnnotation(modifiers, "javax.enterprise.inject.Produces");
+    return hasAnnotation(modifiers, USED_FIELDS_ANNOTATIONS);
   }
 
-  private boolean hasAnnotation(ModifiersTree modifiers, String annotationName) {
+  private boolean hasAnnotation(ModifiersTree modifiers, Set<String> annotationNames) {
     for (AnnotationTree annotation : modifiers.annotations()) {
       Type annotationType = ((AbstractTypedTree) annotation).getSymbolType();
-      if (annotationType.is(annotationName)) {
+      String annotationName = annotationType.getSymbol().getFullyQualifiedName();
+      if (annotationNames.contains(annotationName)) {
         return true;
       }
     }
