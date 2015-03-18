@@ -9,6 +9,7 @@
   </parent>
 
   <artifactId>java-checks</artifactId>
+  <version>2.8-lombok</version>
 
   <name>SonarQube Java :: Checks</name>
 
@@ -22,7 +23,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>java-squid</artifactId>
-      <version>${project.version}</version>
+      <version>${project.parent.version}</version>
     </dependency>
 
     <dependency>
